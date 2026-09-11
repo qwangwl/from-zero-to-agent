@@ -157,11 +157,13 @@ Action: list_files()
 
 ```python
 def parse_action(response: str):
-    for line in response.splitlines():
-        if line.startswith("Action:"):
-            return line[len("Action:"):].strip()
+    marker = "Action:"
+    marker_index = response.find(marker)
 
-    return None
+    if marker_index == -1:
+        return None
+
+    return response[marker_index + len(marker):].strip()
 ```
 
 然后在代码的最后加入：
