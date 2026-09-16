@@ -10,12 +10,13 @@ class Agent:
         self.model_id = model_id
         self.system_prompt = system_prompt
         self.max_step = max_step
+        self.messages = []
 
     def run(self, user_input: str):
-        messages = [{
+        self.messages.append({
             "role": "user",
             "content": user_input,
-        }]
+        })
 
         for step in range(self.max_step):
             print(f"--- 循环 {step + 1} ---\n")
@@ -24,12 +25,12 @@ class Agent:
             response = self.client.responses.create(
                 model=self.model_id,
                 instructions=self.system_prompt,
-                input=messages,
+                input=self.messages,
                 tools=TOOLS,
             )
 
             # 4. 保存本次 response.output，供下一轮请求继续使用。
-            messages.extend(response.output)
+            self.messages.extend(response.output)
 
             function_calls = [
                 item
@@ -56,7 +57,7 @@ class Agent:
                     f"Tool Call: {function_call.name}({arguments})"
                 )
 
-                messages.append({
+                self.messages.append({
                     "type": "function_call_output",
                     "call_id": function_call.call_id,
                     "output": json.dumps(result, ensure_ascii=False),

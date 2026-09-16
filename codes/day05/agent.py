@@ -5,12 +5,13 @@ class Agent:
         self.client = client
         self.model_id = model_id
         self.system_prompt = system_prompt
+        self.messages = []
 
     def run(self, user_input: str):
-        messages = [{
+        self.messages.append({
             "role": "user",
             "content": user_input,
-        }]
+        })
 
         for i in range(10):
             print(f"--- 循环 {i + 1} ---\n")
@@ -19,12 +20,12 @@ class Agent:
             response = self.client.responses.create(
                 model=self.model_id,
                 instructions=self.system_prompt,
-                input=messages,
+                input=self.messages,
             )
 
             assistant_message = response.output_text
 
-            messages.append({
+            self.messages.append({
                 "role": "assistant",
                 "content": assistant_message,
             })
@@ -56,7 +57,7 @@ class Agent:
                 observation = read_file(path)
 
             # 将 Tool Result 作为 Observation 放回 Context
-            messages.append({
+            self.messages.append({
                 "role": "user",
                 "content": f"Observation: {observation}",
             })

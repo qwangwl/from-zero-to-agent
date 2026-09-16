@@ -134,12 +134,13 @@ class Agent:
         self.client = client
         self.model_id = model_id
         self.system_prompt = system_prompt
+        self.messages = []
 
     def run(self, user_input: str):
-        messages = [{
+        self.messages.append({
             "role": "user",
             "content": user_input,
-        }]
+        })
 
         for i in range(10):
             print(f"--- 循环 {i + 1} ---\n")
@@ -148,12 +149,12 @@ class Agent:
             response = self.client.responses.create(
                 model=self.model_id,
                 instructions=self.system_prompt,
-                input=messages,
+                input=self.messages,
             )
 
             assistant_message = response.output_text
 
-            messages.append({
+            self.messages.append({
                 "role": "assistant",
                 "content": assistant_message,
             })
@@ -185,7 +186,7 @@ class Agent:
                 observation = read_file(path)
 
             # 将 Tool Result 作为 Observation 放回 Context
-            messages.append({
+            self.messages.append({
                 "role": "user",
                 "content": f"Observation: {observation}",
             })
@@ -199,6 +200,8 @@ class Agent:
     def parse_finish(self, action: str):
         ...
 ```
+
+这里将 `messages` 保存为 Agent 实例的属性，而不是在每次调用 `run()` 时重新创建。这样，同一个 Agent 接收下一次用户输入时，仍然能够看到此前的用户消息、模型回复和工具结果，重构不会丢失 Day02 已经实现的多轮对话能力。
 
 现在，原来散落在 `main.py` 中的 Agent Loop、Action 解析和 Tool 执行逻辑都被集中到了 `Agent` 类中。
 

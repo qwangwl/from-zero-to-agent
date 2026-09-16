@@ -58,12 +58,6 @@ client = OpenAI(
     base_url=BASE_URL,
 )
 
-client = OpenAI(
-    api_key=API_KEY,
-    base_url=BASE_URL,
-)
-
-
 agent = Agent(
     client=client,
     model_id=MODEL_ID,

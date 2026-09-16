@@ -192,48 +192,61 @@ messages.append({
 ```python
 import json
 
+def run(self, user_input: str):
+    self.messages.append({
+        "role": "user",
+        "content": user_input,
+    })
 
-for i in range(10):
-    response = client.responses.create(
-        model=MODEL_ID,
-        instructions=SYSTEM_PROMPT,
-        input=messages,
-        tools=TOOLS,
-    )
-
-    messages.extend(response.output)
-
-    function_calls = [
-        item
-        for item in response.output
-        if item.type == "function_call"
-    ]
-
-    # 没有 Function Call，说明模型已经生成最终回答
-    if not function_calls:
-        print(response.output_text)
-        break
-
-    for function_call in function_calls:
-        arguments = json.loads(function_call.arguments)
-
-        tool = TOOL_REGISTRY.get(function_call.name)
-
-        if tool is None:
-            result = f"Unknown tool: {function_call.name}"
-        else:
-            result = tool(**arguments)
-
-        print(
-            f"Tool Call: {function_call.name}({arguments})"
+    for step in range(self.max_step):
+        response = self.client.responses.create(
+            model=self.model_id,
+            instructions=self.system_prompt,
+            input=self.messages,
+            tools=TOOLS,
         )
 
-        messages.append({
-            "type": "function_call_output",
-            "call_id": function_call.call_id,
-            "output": json.dumps(result, ensure_ascii=False),
-        })
+        self.messages.extend(response.output)
+
+        function_calls = [
+            item
+            for item in response.output
+            if item.type == "function_call"
+        ]
+
+        # 没有 Function Call，说明模型已经生成最终回答
+        if not function_calls:
+            print(response.output_text)
+            break
+
+        for function_call in function_calls:
+            arguments = json.loads(function_call.arguments)
+
+            tool = TOOL_REGISTRY.get(function_call.name)
+
+            if tool is None:
+                result = f"Unknown tool: {function_call.name}"
+            else:
+                result = tool(**arguments)
+
+            print(
+                f"Tool Call: {function_call.name}({arguments})"
+            )
+
+            self.messages.append({
+                "type": "function_call_output",
+                "call_id": function_call.call_id,
+                "output": json.dumps(result, ensure_ascii=False),
+            })
 ```
+
+其中 `self.messages` 在 Agent 初始化时创建：
+
+```python
+self.messages = []
+```
+
+每次 `run()` 都把新的用户输入追加到同一份历史中。因此 Function Calling 不仅能在一次任务内部关联工具调用和结果，同一个 Agent 实例也能在多次用户提问之间保留完整上下文。
 
 现在运行：
 
