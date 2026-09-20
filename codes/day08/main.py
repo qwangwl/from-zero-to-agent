@@ -4,13 +4,9 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from agent import Agent
 from tools import ToolRegistry
+from pathlib import Path
 from tools.builtin import (
-    ListFilesTool,
-    ReadFileTool,
-    CreateDirectoryTool,
-    CreateFileTool,
-    EditFileTool,
-    DeleteFileTool,
+    FileTool,
 )
 
 
@@ -24,13 +20,9 @@ SYSTEM_PROMPT = """
 使用已声明的工具执行任务，只根据工具实际返回的结果描述文件和操作结果。
 """
 
+workspace = Path.cwd()
 registry = ToolRegistry()
-registry.register_tool(ListFilesTool())
-registry.register_tool(ReadFileTool())
-registry.register_tool(CreateDirectoryTool())
-registry.register_tool(CreateFileTool())
-registry.register_tool(EditFileTool())
-registry.register_tool(DeleteFileTool())
+registry.register_tool(FileTool(workspace))
 
 client = OpenAI(
     api_key=API_KEY,
@@ -44,6 +36,7 @@ agent = Agent(
     tool_registry=registry,
 )
 
+print(f"工作目录: {workspace}")
 while True:
     
     user_input = input("You: ").strip()
