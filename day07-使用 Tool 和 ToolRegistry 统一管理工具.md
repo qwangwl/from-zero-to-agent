@@ -179,7 +179,7 @@ ToolParameter(
 
 ## 实现第一个 Tool
 
-现在就可以实现一个具体工具，例如 `ReadFileTool`。文件工具共用的 `FileTool` 基类只负责初始化工作目录：
+现在就可以实现一个具体工具，例如 `ReadFileTool`：
 
 ```python
 # codes/day07/tools/builtin/files_tools.py
@@ -187,17 +187,9 @@ ToolParameter(
 from pathlib import Path
 from ..base import Tool, ToolParameter
 
-class FileTool(Tool):
-    def __init__(self, workspace: str | Path, name: str, description: str):
-        super().__init__(name, description)
-        self.workspace = Path(workspace).expanduser().resolve()
-        self.workspace.mkdir(parents=True, exist_ok=True)
-
-
-class ReadFileTool(FileTool):
-    def __init__(self, workspace: str | Path):
+class ReadFileTool(Tool):
+    def __init__(self):
         super().__init__(
-            workspace,
             "read_file",
             "读取 UTF-8 文本文件。",
         )
@@ -214,7 +206,7 @@ class ReadFileTool(FileTool):
     def execute(self, arguments: dict) -> str:
         path = arguments["path"]
 
-        file_path = self.workspace / path
+        file_path = Path(path)
 
         with file_path.open(
             "r",
@@ -280,19 +272,20 @@ class ToolRegistry:
         ]
 ```
 
-现在注册：
+创建工具实例后，直接注册：
 
 ```python
-registry.register_tool(ReadFileTool(workspace))
-registry.register_tool(ListFilesTool(workspace))
+registry = ToolRegistry()
+registry.register_tool(ReadFileTool())
+registry.register_tool(ListFilesTool())
 ```
 
 内部保存的结构仍然类似一个字典：
 
 ```python
 {
-    "list_files": ListFilesTool(...),
-    "read_file": ReadFileTool(...),
+    "list_files": ListFilesTool(),
+    "read_file": ReadFileTool(),
 }
 ```
 
@@ -409,21 +402,20 @@ Tool
 | `delete_file`     | 删除文件     |
 | `create_directory` | 创建目录     |
 
-这些工具全部继承 `Tool`。为了限制文件工具的访问范围，在 `codes/day07/tools/builtin/files_tools.py` 中还设计了一个公共的文件工具基类，用来统一处理 workspace 路径，保证 Agent 只能操作当前工作区中的文件。
+这些工具在 `codes/day07/tools/builtin/files_tools.py` 中实现，都遵循 `Tool` 的接口，分别提供参数定义和执行方法。
 
 ## 让 Agent 只依赖注册表
 
-入口文件 `codes/day07/main.py` 使用启动命令所在的当前目录作为 workspace，并注册六个文件工具：
+入口文件 `codes/day07/main.py` 创建并注册六个文件工具：
 
 ```python
-workspace = Path.cwd()
 registry = ToolRegistry()
-registry.register_tool(ListFilesTool(workspace))
-registry.register_tool(ReadFileTool(workspace))
-registry.register_tool(CreateDirectoryTool(workspace))
-registry.register_tool(CreateFileTool(workspace))
-registry.register_tool(EditFileTool(workspace))
-registry.register_tool(DeleteFileTool(workspace))
+registry.register_tool(ListFilesTool())
+registry.register_tool(ReadFileTool())
+registry.register_tool(CreateDirectoryTool())
+registry.register_tool(CreateFileTool())
+registry.register_tool(EditFileTool())
+registry.register_tool(DeleteFileTool())
 ```
 
 然后把注册表注入 Agent：
@@ -481,7 +473,7 @@ Agent ─── execute() ───► Tool
   └── function_call_output ◄┘
 ```
 
-在项目根目录启动交互式 Agent，此时 workspace 就是项目根目录：
+在项目根目录启动交互式 Agent：
 
 ```bash
 python codes/day07/main.py

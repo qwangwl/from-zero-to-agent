@@ -3,18 +3,9 @@ from pathlib import Path
 from ..base import Tool, ToolParameter
 
 
-class FileTool(Tool):
-    """共享文件操作的基础目录。"""
-
-    def __init__(self, workspace: str | Path, name: str, description: str):
-        super().__init__(name, description)
-        self.workspace = Path(workspace).expanduser().resolve()
-        self.workspace.mkdir(parents=True, exist_ok=True)
-
-
-class ListFilesTool(FileTool):
-    def __init__(self, workspace: str | Path):
-        super().__init__(workspace, 'list_files', '列出指定目录下的文件和子目录，不递归。')
+class ListFilesTool(Tool):
+    def __init__(self):
+        super().__init__('list_files', '列出指定目录下的文件和子目录，不递归。')
 
     def get_parameters(self) -> list[ToolParameter]:
         return [
@@ -23,16 +14,16 @@ class ListFilesTool(FileTool):
 
     def execute(self, arguments: dict) -> list[dict]:
         path = arguments['path']
-        directory = self.workspace / path
+        directory = Path(path)
         return [
             {"name": item.name, "type": "directory" if item.is_dir() else "file"}
             for item in sorted(directory.iterdir(), key=lambda item: item.name)
         ]
 
 
-class ReadFileTool(FileTool):
-    def __init__(self, workspace: str | Path):
-        super().__init__(workspace, 'read_file', '读取 UTF-8 文本文件。')
+class ReadFileTool(Tool):
+    def __init__(self):
+        super().__init__('read_file', '读取 UTF-8 文本文件。')
 
     def get_parameters(self) -> list[ToolParameter]:
         return [
@@ -41,13 +32,13 @@ class ReadFileTool(FileTool):
 
     def execute(self, arguments: dict) -> str:
         path = arguments['path']
-        with (self.workspace / path).open("r", encoding="utf-8", newline="") as file:
+        with Path(path).open("r", encoding="utf-8", newline="") as file:
             return file.read()
 
 
-class CreateDirectoryTool(FileTool):
-    def __init__(self, workspace: str | Path):
-        super().__init__(workspace, 'create_directory', '创建目录及缺失的父目录，已有目录保持不变。')
+class CreateDirectoryTool(Tool):
+    def __init__(self):
+        super().__init__('create_directory', '创建目录及缺失的父目录，已有目录保持不变。')
 
     def get_parameters(self) -> list[ToolParameter]:
         return [
@@ -56,13 +47,13 @@ class CreateDirectoryTool(FileTool):
 
     def execute(self, arguments: dict) -> dict:
         path = arguments['path']
-        (self.workspace / path).mkdir(parents=True, exist_ok=True)
+        Path(path).mkdir(parents=True, exist_ok=True)
         return {"created_directory": path}
 
 
-class CreateFileTool(FileTool):
-    def __init__(self, workspace: str | Path):
-        super().__init__(workspace, 'create_file', '写入 UTF-8 文本文件，已存在时覆盖内容；父目录须已存在。')
+class CreateFileTool(Tool):
+    def __init__(self):
+        super().__init__('create_file', '写入 UTF-8 文本文件，已存在时覆盖内容；父目录须已存在。')
 
     def get_parameters(self) -> list[ToolParameter]:
         return [
@@ -73,14 +64,14 @@ class CreateFileTool(FileTool):
     def execute(self, arguments: dict) -> dict:
         path = arguments['path']
         content = arguments['content']
-        with (self.workspace / path).open("w", encoding="utf-8", newline="") as file:
+        with Path(path).open("w", encoding="utf-8", newline="") as file:
             file.write(content)
         return {"created_file": path}
 
 
-class EditFileTool(FileTool):
-    def __init__(self, workspace: str | Path):
-        super().__init__(workspace, 'edit_file', '读取文件并替换所有匹配的旧文本，再写回文件。')
+class EditFileTool(Tool):
+    def __init__(self):
+        super().__init__('edit_file', '读取文件并替换所有匹配的旧文本，再写回文件。')
 
     def get_parameters(self) -> list[ToolParameter]:
         return [
@@ -93,7 +84,7 @@ class EditFileTool(FileTool):
         path = arguments['path']
         old_text = arguments['old_text']
         new_text = arguments['new_text']
-        target = self.workspace / path
+        target = Path(path)
         with target.open("r", encoding="utf-8", newline="") as file:
             content = file.read()
         with target.open("w", encoding="utf-8", newline="") as file:
@@ -101,9 +92,9 @@ class EditFileTool(FileTool):
         return {"edited_file": path, "replacements": content.count(old_text)}
 
 
-class DeleteFileTool(FileTool):
-    def __init__(self, workspace: str | Path):
-        super().__init__(workspace, 'delete_file', '删除指定文件。')
+class DeleteFileTool(Tool):
+    def __init__(self):
+        super().__init__('delete_file', '删除指定文件。')
 
     def get_parameters(self) -> list[ToolParameter]:
         return [
@@ -112,5 +103,5 @@ class DeleteFileTool(FileTool):
 
     def execute(self, arguments: dict) -> dict:
         path = arguments['path']
-        (self.workspace / path).unlink()
+        Path(path).unlink()
         return {"deleted_file": path}

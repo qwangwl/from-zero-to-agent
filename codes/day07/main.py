@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from dotenv import load_dotenv
 from openai import OpenAI
 from agent import Agent
@@ -24,14 +23,13 @@ SYSTEM_PROMPT = """
 使用已声明的工具执行任务，只根据工具实际返回的结果描述文件和操作结果。
 """
 
-workspace = Path.cwd()
 registry = ToolRegistry()
-registry.register_tool(ListFilesTool(workspace))
-registry.register_tool(ReadFileTool(workspace))
-registry.register_tool(CreateDirectoryTool(workspace))
-registry.register_tool(CreateFileTool(workspace))
-registry.register_tool(EditFileTool(workspace))
-registry.register_tool(DeleteFileTool(workspace))
+registry.register_tool(ListFilesTool())
+registry.register_tool(ReadFileTool())
+registry.register_tool(CreateDirectoryTool())
+registry.register_tool(CreateFileTool())
+registry.register_tool(EditFileTool())
+registry.register_tool(DeleteFileTool())
 
 client = OpenAI(
     api_key=API_KEY,
@@ -44,8 +42,6 @@ agent = Agent(
     system_prompt=SYSTEM_PROMPT,
     tool_registry=registry,
 )
-
-print(f"工作目录：{workspace.resolve()}")
 
 while True:
     

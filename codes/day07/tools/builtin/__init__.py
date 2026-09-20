@@ -1,5 +1,4 @@
 from .files_tools import (
-    FileTool,
     ListFilesTool,
     ReadFileTool,
     CreateDirectoryTool,
@@ -9,7 +8,6 @@ from .files_tools import (
 )
 
 __all__ = [
-    "FileTool",
     "ListFilesTool",
     "ReadFileTool",
     "CreateDirectoryTool",
