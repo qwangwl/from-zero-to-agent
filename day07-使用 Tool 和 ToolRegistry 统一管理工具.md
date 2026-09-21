@@ -527,7 +527,7 @@ Tool
 ## 本日新增与修改的文件
 
 - [tools/base.py](codes/day07/tools/base.py)：新增：定义 Tool、ToolParameter 和工具 Schema 生成逻辑。
-- [tools/registry.py](codes/day07/tools/registry.py)：新增：统一注册、查找、参数校验和工具执行。
+- [tools/registry.py](codes/day07/tools/registry.py)：新增：统一注册、查找和工具执行。
 - [tools/builtin/files_tools.py](codes/day07/tools/builtin/files_tools.py)：新增：将文件操作封装为独立的工具类。
 - [agent.py](codes/day07/agent.py)：修改：通过注册表获取工具描述并执行工具。
 - [main.py](codes/day07/main.py)：修改：创建注册表，注册文件工具并传入 Agent。

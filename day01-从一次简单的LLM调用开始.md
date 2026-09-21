@@ -238,7 +238,10 @@ SYSTEM_PROMPT = """
 ```python
 from openai import OpenAI
 
-client = OpenAI()
+client = OpenAI(
+    api_key=API_KEY,
+    base_url=BASE_URL
+)
 
 SYSTEM_PROMPT = """
 你是一名资深 Agent 开发研究者。
@@ -354,7 +357,7 @@ Assistant: Agent（智能体）可以理解为一个“会自己干活的AI程�
 You: exit
 ```
 
-完整源代码：`code/day01`
+完整源代码：`codes/day01`
 
 ## 本日新增与修改的文件
 

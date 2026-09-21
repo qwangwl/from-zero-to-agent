@@ -97,7 +97,7 @@ Tool 执行
 将目录调整为：
 
 ```text
-code/day05/
+codes/day05/
 
 ├── main.py      # 负责接收用户输入
 ├── agent.py     # 负责 Agent Loop 和 Action 处理

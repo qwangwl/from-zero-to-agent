@@ -25,6 +25,7 @@ class FileTool(Tool):
                     "create_directory(创建目录), create(创建新文件，禁止覆盖), "
                     "edit(唯一匹配后替换文本), delete(删除文件)"
                 ),
+                required=True,
             ),
             ToolParameter(
                 name="path",

@@ -102,19 +102,17 @@ response = client.responses.create(
 )
 ```
 
-System Prompt 也可以简化成（甚至在当前版本中可以删除）：
+System Prompt 可以简化为行为要求，并让模型在调用工具前简要说明操作目的：
 
 ```python
 SYSTEM_PROMPT = """
-你是一个智能助手。
-
-请根据用户请求选择合适的工具完成任务。
-
-如果已经获得足够的信息，请直接回答用户。
+你是一个能够处理文件的智能助手，请使用中文回答。
+使用已声明的工具执行任务，只根据工具实际返回的结果描述文件和操作结果。
+每次调用工具前，请用一句话说明本次操作的目的。
 """
 ```
 
-我们不需要再做额外的工具声明，以及规定返回的结构。
+工具声明通过 `tools` 参数传入，不再需要在提示词中重复定义工具或规定 `Thought / Action / Finish` 格式。模型返回的操作说明通过 `response.output_text` 打印，工具调用则从 `response.output` 中读取。
 
 模型可能直接回答，也可能返回一个或多个 `function_call`。
 
@@ -218,6 +216,8 @@ def run(self, user_input: str):
         if not function_calls:
             print(response.output_text)
             break
+
+        print("Assistant:", response.output_text)
 
         for function_call in function_calls:
             arguments = json.loads(function_call.arguments)
