@@ -1,4 +1,4 @@
-# 30 Days Agent
+# from-zero-to-agent
 
 这是一个从零开始学习 AI Agent 开发的实践项目。
 
