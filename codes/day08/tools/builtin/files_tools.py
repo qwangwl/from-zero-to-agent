@@ -22,14 +22,14 @@ class FileTool(Tool):
                 type="string",
                 description=(
                     "操作类型: list(列出目录), read(读取文件), "
-                    "create_directory(创建目录), create(创建或覆盖文件), "
-                    "edit(替换文件文本), delete(删除文件)"
+                    "create_directory(创建目录), create(创建新文件，禁止覆盖), "
+                    "edit(唯一匹配后替换文本), delete(删除文件)"
                 ),
             ),
             ToolParameter(
                 name="path",
                 type="string",
-                description="相对于工作目录的路径；list 的根目录使用 .。",
+                description="工作目录内的相对路径，不允许隐藏项或符号链接；list 默认 .。",
                 required=False,
             ),
             ToolParameter(
@@ -64,11 +64,12 @@ class FileTool(Tool):
         }
         handler = handlers.get(action)
         if handler is None:
-            return {"error": f"不支持的操作: {action}"}
+            raise ValueError(f"不支持的操作: {action}")
         return handler(arguments)
 
     def _path(self, arguments: dict) -> Path:
-        path = arguments.get("path")
+        path = arguments.get("path", "." if arguments.get("action") == "list" else None)
+
         if not path:
             raise ValueError("该操作需要提供 path")
         target = (self.workspace / path).resolve()
@@ -87,6 +88,7 @@ class FileTool(Tool):
         return [
             {"name": item.name, "type": "directory" if item.is_dir() else "file"}
             for item in sorted(directory.iterdir(), key=lambda item: item.name)
+            if not item.name.startswith(".") and not item.is_symlink()
         ]
 
     def _read(self, arguments: dict) -> str:
@@ -103,7 +105,7 @@ class FileTool(Tool):
         content = arguments.get("content")
         if content is None:
             raise ValueError("create 操作需要提供 content")
-        with path.open("w", encoding="utf-8", newline="") as file:
+        with path.open("x", encoding="utf-8", newline="") as file:
             file.write(content)
         return {"created_file": self._path_value(arguments)}
 
@@ -111,13 +113,26 @@ class FileTool(Tool):
         path = self._path(arguments)
         old_text = arguments.get("old_text")
         new_text = arguments.get("new_text")
+
         if old_text is None or new_text is None:
             raise ValueError("edit 操作需要提供 old_text 和 new_text")
+        if not old_text:
+            raise ValueError("old_text 不能为空。")
+        
         with path.open("r", encoding="utf-8", newline="") as file:
             content = file.read()
+
         replacements = content.count(old_text)
+        first_match = content.find(old_text)
+
+        if first_match >= 0 and content.find(old_text, first_match + 1) >= 0:
+            raise ValueError("old_text 存在多处匹配，请提供更长的原文。")
+        if replacements != 1:
+            raise ValueError(f"old_text 必须唯一匹配，实际匹配 {replacements} 处。")
+        
         with path.open("w", encoding="utf-8", newline="") as file:
             file.write(content.replace(old_text, new_text))
+            
         return {
             "edited_file": self._path_value(arguments),
             "replacements": replacements,

@@ -43,6 +43,8 @@ class Agent:
                 print(response.output_text)
                 break
 
+            print("Assistant: ", response.output_text)
+
             for function_call in function_calls:
                 arguments = json.loads(function_call.arguments)
 

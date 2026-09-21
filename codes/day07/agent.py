@@ -43,6 +43,8 @@ class Agent:
             if not function_calls:
                 return response.output_text
 
+            print("Assistant: ", response.output_text)
+
             for call in function_calls:
                 
                 arguments = json.loads(call.arguments)

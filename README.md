@@ -54,3 +54,7 @@ python codes/day01/main.py
 ```
 
 不同 Day 的代码相互独立，可以按照顺序学习，也可以单独运行某一天的示例。
+
+## 致谢
+
+感谢 [Hello Agents](https://hello-agents.datawhale.cc/#/) 开源教程，为本项目的学习与实践提供了参考和启发。

@@ -1,7 +1,5 @@
 import json
-
 from tools import ToolRegistry
-
 
 class Agent:
     def __init__(self, client, model_id: str, system_prompt: str,
@@ -43,6 +41,8 @@ class Agent:
             if not function_calls:
                 return response.output_text
 
+            print("Assistant: ", response.output_text)
+
             for call in function_calls:
                 
                 arguments = json.loads(call.arguments)
@@ -53,7 +53,7 @@ class Agent:
                 self.messages.append({
                     "type": "function_call_output",
                     "call_id": call.call_id,
-                    "output": json.dumps(result, ensure_ascii=False),
+                    "output": result.to_json(),
                 })
 
-        return "已达到工具调用轮次上限，任务尚未完成；已执行的文件操作不会自动撤销。"
+        return "已达到模型调用轮次上限，尚未获得最终回答；已执行的文件操作不会自动撤销。"
