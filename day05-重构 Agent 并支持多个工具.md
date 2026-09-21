@@ -234,3 +234,9 @@ while True:
 现在集中在 `main.py` 中的代码拆分成了更清晰的模块，为后面继续增加新的 Agent 能力做好了准备。
 
 完整源代码：`codes/day05`
+
+## 本日新增与修改的文件
+
+- [agent.py](codes/day05/agent.py)：新增：将对话历史、模型调用和工具循环封装到 Agent 类中。
+- [tools.py](codes/day05/tools.py)：新增：集中定义列目录和读取文件工具。
+- [main.py](codes/day05/main.py)：修改：配置模型和提示词，创建 Agent 并处理终端输入。

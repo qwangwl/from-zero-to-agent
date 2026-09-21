@@ -291,3 +291,9 @@ System Prompt 中的自定义格式也不再需要。
 这就是 Day06 完成的事情。
 
 完整源代码：`codes/day06`
+
+## 本日新增与修改的文件
+
+- [tools.py](codes/day06/tools.py)：修改：定义工具 Schema 和工具名到函数的映射。
+- [agent.py](codes/day06/agent.py)：修改：处理 function_call，解析参数并通过 function_call_output 回传结果。
+- [main.py](codes/day06/main.py)：修改：调整提示词与 Agent 初始化，接入 Function Calling。
