@@ -41,7 +41,7 @@ class Agent:
             if not function_calls:
                 return response.output_text
 
-            print("Assistant: ", response.output_text)
+            print("Assistant:", response.output_text)
 
             for call in function_calls:
                 
@@ -49,6 +49,7 @@ class Agent:
                 result = self.tool_registry.execute(call.name, arguments)
 
                 print(f"Tool Call: {call.name}({arguments})")
+                print(f"Tool Result: {result.error_info}") # 测试用
 
                 self.messages.append({
                     "type": "function_call_output",

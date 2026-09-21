@@ -1,5 +1,3 @@
-import json
-
 from .base import Tool
 from .response import ToolResponse
 
@@ -29,23 +27,38 @@ class ToolRegistry:
 
     def execute(self, name: str, arguments: dict) -> ToolResponse:
 
+        response = None
+
         if name not in self._tools:
-            return ToolResponse.error("unknown_tool", f"未知工具：{name}")
-        
-        tool = self.get(name)
+            response = ToolResponse.error(
+                code="unknown_tool",
+                message=f"未知工具：{name}",
+            )
+        else:
+            tool = self.get(name=name)
 
-        try:
-            self.validate_arguments(tool, arguments)
-        except ValueError as error:
-            return ToolResponse.error("invalid_arguments", str(error))
+            try:
+                self.validate_arguments(tool=tool, arguments=arguments)
+            except ValueError as error:
+                response = ToolResponse.error(
+                    code="invalid_arguments",
+                    message=str(error),
+                )
+            else:
+                # 只有参数校验通过后，才执行工具。
+                try:
+                    result = tool.execute(arguments=arguments)
+                    response = ToolResponse.success(
+                        text=str(result),
+                        data=result,
+                    )
+                except (OSError, ValueError, UnicodeError) as error:
+                    response = ToolResponse.error(
+                        code=type(error).__name__,
+                        message=str(error),
+                    )
 
-        try:
-            result = tool.execute(arguments)
-            text = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
-
-            return ToolResponse.success(text=text, data=result)
-        except (OSError, ValueError, UnicodeError) as error:
-            return ToolResponse.error(type(error).__name__, str(error))
+        return response
 
     @staticmethod
     def validate_arguments(tool: Tool, arguments: dict) -> None:
