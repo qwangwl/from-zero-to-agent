@@ -1,13 +1,13 @@
 import json
+from core.llm import LLM
 from tools import ToolRegistry
 
 class Agent:
-    def __init__(self, client, model_id: str, system_prompt: str,
+    def __init__(self, llm: LLM, system_prompt: str,
                  tool_registry: ToolRegistry, max_step: int = 10):
         if max_step < 1:
             raise ValueError("max_step 必须大于 0。")
-        self.client = client
-        self.model_id = model_id
+        self.llm = llm
         self.system_prompt = system_prompt
         self.tool_registry = tool_registry
         self.max_step = max_step
@@ -22,38 +22,27 @@ class Agent:
         for step in range(self.max_step):
             print(f"--- 循环 {step + 1} ---")
 
-            response = self.client.responses.create(
-                model=self.model_id,
+            response = self.llm.generate(
+                messages=self.messages,
                 instructions=self.system_prompt,
-                input=self.messages,
                 tools=self.tool_registry.get_schemas(),
             )
+            self.messages.extend(response.content)
 
-            # 保存完整响应项，包括可能存在的 reasoning 项。
-            self.messages.extend(response.output)
+            if not response.tool_calls:
+                return response.text or "模型未返回文本或工具调用。"
+            
+            print("Usage:", response.usage)
+            print("Assistant:", response.text)
 
-            function_calls = [
-                item 
-                for item in response.output 
-                if item.type == "function_call"
-            ]
-
-            if not function_calls:
-                return response.output_text
-
-            print("Assistant:", response.output_text)
-
-            for call in function_calls:
-                
+            for call in response.tool_calls:
                 arguments = json.loads(call.arguments)
-                result = self.tool_registry.execute(call.name, arguments)
-
+                result = self.tool_registry.execute(name=call.name, arguments=arguments)
                 print(f"Tool Call: {call.name}({arguments})")
-                print(f"Tool Result: {result.error_info}") # 测试用
 
                 self.messages.append({
                     "type": "function_call_output",
-                    "call_id": call.call_id,
+                    "call_id": call.id,
                     "output": result.to_json(),
                 })
 

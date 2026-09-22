@@ -1,7 +1,7 @@
 import os
 import readline
 from dotenv import load_dotenv
-from openai import OpenAI
+from core.llm import OpenAILLM
 from agent import Agent
 from tools import ToolRegistry
 from pathlib import Path
@@ -11,9 +11,9 @@ from tools.builtin import (
 
 
 load_dotenv()
-API_KEY = os.getenv("API_KEY")
+API_KEY = os.environ["API_KEY"]
 BASE_URL = os.getenv("BASE_URL")
-MODEL_ID = os.getenv("MODEL_ID")
+MODEL_ID = os.environ["MODEL_ID"]
 
 SYSTEM_PROMPT = """
 你是一个能够处理文件的智能助手，请使用中文回答。
@@ -25,14 +25,15 @@ workspace = Path.cwd()
 registry = ToolRegistry()
 registry.register_tool(FileTool(workspace))
 
-client = OpenAI(
+llm = OpenAILLM(
+    model_id=MODEL_ID,
     api_key=API_KEY,
-    base_url=BASE_URL,
+    base_url=BASE_URL or None,
+    timeout=60.0,
 )
 
 agent = Agent(
-    client=client,
-    model_id=MODEL_ID,
+    llm=llm,
     system_prompt=SYSTEM_PROMPT,
     tool_registry=registry,
 )
