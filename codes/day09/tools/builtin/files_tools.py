@@ -73,11 +73,26 @@ class FileTool(Tool):
 
         if not path:
             raise ValueError("该操作需要提供 path")
-        target = (self.workspace / path).resolve()
+
+        relative = Path(path)
+
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("path 必须是工作目录内的相对路径，不能包含 ..")
+        if any(part.startswith(".") for part in relative.parts):
+            raise ValueError("不允许访问隐藏文件或隐藏目录。")
+
+        target = self.workspace
+        for part in relative.parts:
+            target = target / part
+            if target.is_symlink():
+                raise ValueError("不允许访问符号链接。")
+        target = target.resolve()
+
         try:
             target.relative_to(self.workspace)
         except ValueError as error:
             raise ValueError("path 不能超出 workspace 目录") from error
+
         return target
 
     @staticmethod
@@ -114,15 +129,12 @@ class FileTool(Tool):
         path = self._path(arguments)
         old_text = arguments.get("old_text")
         new_text = arguments.get("new_text")
-
         if old_text is None or new_text is None:
             raise ValueError("edit 操作需要提供 old_text 和 new_text")
         if not old_text:
             raise ValueError("old_text 不能为空。")
-        
         with path.open("r", encoding="utf-8", newline="") as file:
             content = file.read()
-
         replacements = content.count(old_text)
         first_match = content.find(old_text)
 
@@ -130,10 +142,9 @@ class FileTool(Tool):
             raise ValueError("old_text 存在多处匹配，请提供更长的原文。")
         if replacements != 1:
             raise ValueError(f"old_text 必须唯一匹配，实际匹配 {replacements} 处。")
-        
+
         with path.open("w", encoding="utf-8", newline="") as file:
             file.write(content.replace(old_text, new_text))
-            
         return {
             "edited_file": self._path_value(arguments),
             "replacements": replacements,
