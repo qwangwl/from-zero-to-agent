@@ -47,4 +47,24 @@ while True:
         break
     
     if user_input:
-        print("Assistant:", agent.run(user_input))
+        printed_text = False
+        for event in agent.run_stream(user_input):
+            if event.kind == "step":
+                print(f"--- 循环 {event.step} ---")
+                printed_text = False
+            elif event.kind == "text":
+                if not printed_text:
+                    print("Assistant: ", end="", flush=True)
+                    printed_text = True
+                print(event.text, end="", flush=True)
+            elif event.kind == "usage":
+                if printed_text:
+                    print()
+                    printed_text = False
+                print("Usage:", event.usage)
+            elif event.kind == "tool_call":
+                print("Tool Call:", event.text)
+            elif event.kind == "tool_result":
+                print("Tool Result:", event.text)
+        if printed_text:
+            print()

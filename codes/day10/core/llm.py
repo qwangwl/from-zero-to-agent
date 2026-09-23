@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Iterator
 from openai import OpenAI, OpenAIError
-from .llm_response import LLMResponse, ToolCall
+from .llm_response import LLMResponse, StreamEvent, ToolCall
 
 class LLM(ABC):
     def __init__(self, model_id: str, api_key: str,
@@ -13,9 +13,15 @@ class LLM(ABC):
         self.timeout = timeout
 
     @abstractmethod
-    def generate(self, messages: list[Any], instructions: str,
+    def invoke(self, messages: list[Any], instructions: str,
                  tools: list[dict]) -> LLMResponse:
         """调用模型，返回统一响应；content 保留继续对话所需的原始响应项。"""
+        pass
+
+    @abstractmethod
+    def stream_invoke(self, messages: list[Any], instructions: str,
+               tools: list[dict]) -> Iterator[StreamEvent]:
+        """逐段返回文本事件，最后返回带完整响应的结束事件。"""
         pass
 
 class OpenAILLM(LLM):
@@ -37,7 +43,7 @@ class OpenAILLM(LLM):
             max_retries=0,
         )
 
-    def generate(self, messages: list, instructions: str,
+    def invoke(self, messages: list, instructions: str,
                  tools: list[dict]) -> LLMResponse:
         # 将历史、系统提示和工具声明交给模型。
         try:
@@ -53,7 +59,37 @@ class OpenAILLM(LLM):
         if response.status != "completed":
             raise RuntimeError(f"模型响应未完成：{response.status}")
 
-        # 提取本次请求的 Token 用量。
+        return self._convert(response)
+
+    def stream_invoke(self, messages: list, instructions: str,
+               tools: list[dict]) -> Iterator[StreamEvent]:
+        """文字到达时立即交给调用方；工具调用在响应完成后统一处理。"""
+        try:
+            events = self.client.responses.create(
+                model=self.model_id,
+                instructions=instructions,
+                input=messages,
+                tools=tools,
+                stream=True,
+            )
+            completed = None
+            for event in events:
+                if event.type == "response.output_text.delta":
+                    yield StreamEvent(kind="text", text=event.delta)
+                elif event.type == "response.completed":
+                    completed = event.response
+                elif event.type in ("response.failed", "response.incomplete", "error"):
+                    raise RuntimeError(f"模型流式响应失败：{event.type}")
+        except OpenAIError as error:
+            raise RuntimeError(f"模型请求失败：{type(error).__name__}") from error
+
+        if completed is None or completed.status != "completed":
+            raise RuntimeError("模型流式响应未完成。")
+        yield StreamEvent(kind="completed", response=self._convert(completed))
+
+    @staticmethod
+    def _convert(response) -> LLMResponse:
+        # 完整响应保留原始输出项，工具调用无需在增量事件中自行拼接。
         usage = {}
         if response.usage is not None:
             usage = {
