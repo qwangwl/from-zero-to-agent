@@ -22,7 +22,7 @@ class Agent:
         for step in range(self.max_step):
             print(f"--- 循环 {step + 1} ---")
 
-            response = self.llm.generate(
+            response = self.llm.invoke(
                 messages=self.messages,
                 instructions=self.system_prompt,
                 tools=self.tool_registry.get_schemas(),

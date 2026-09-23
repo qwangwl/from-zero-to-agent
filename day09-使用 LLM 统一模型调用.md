@@ -118,13 +118,13 @@ class LLM(ABC):
         self.timeout = timeout
 
     @abstractmethod
-    def generate(self, messages: list[Any], instructions: str,
+    def invoke(self, messages: list[Any], instructions: str,
                  tools: list[dict]) -> LLMResponse:
         """调用模型，返回统一响应；content 保留继续对话所需的原始响应项。"""
         pass
 ```
 
-有了 `LLM` 的接口约定，接下来直接定义 `OpenAILLM`，实现 `generate()`。它使用 OpenAI Responses API，将原先写在 Agent 中的模型请求和响应解析集中起来。公共参数由基类保存，`OpenAILLM` 负责创建客户端、发起请求和转换响应。
+有了 `LLM` 的接口约定，接下来直接定义 `OpenAILLM`，实现 `invoke()`。它使用 OpenAI Responses API，将原先写在 Agent 中的模型请求和响应解析集中起来。公共参数由基类保存，`OpenAILLM` 负责创建客户端、发起请求和转换响应。
 
 ```python
 # codes/day09/core/llm.py
@@ -149,7 +149,7 @@ class OpenAILLM(LLM):
             max_retries=0,
         )
 
-    def generate(self, messages: list, instructions: str,
+    def invoke(self, messages: list, instructions: str,
                  tools: list[dict]) -> LLMResponse:
         # 将历史、系统提示和工具声明交给模型。
         try:
@@ -197,7 +197,7 @@ class OpenAILLM(LLM):
 
 ```text
 Agent
-    ↓ generate()
+    ↓ invoke()
 OpenAILLM
     ↓ responses.create()
 模型服务
@@ -231,7 +231,7 @@ class Agent:
 于是 Agent 调用模型时，可以改成：
 
 ```python
-response = self.llm.generate(
+response = self.llm.invoke(
     messages=self.messages,
     instructions=self.system_prompt,
     tools=self.tool_registry.get_schemas(),

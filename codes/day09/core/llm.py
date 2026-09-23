@@ -13,7 +13,7 @@ class LLM(ABC):
         self.timeout = timeout
 
     @abstractmethod
-    def generate(self, messages: list[Any], instructions: str,
+    def invoke(self, messages: list[Any], instructions: str,
                  tools: list[dict]) -> LLMResponse:
         """调用模型，返回统一响应；content 保留继续对话所需的原始响应项。"""
         pass
@@ -37,7 +37,7 @@ class OpenAILLM(LLM):
             max_retries=0,
         )
 
-    def generate(self, messages: list, instructions: str,
+    def invoke(self, messages: list, instructions: str,
                  tools: list[dict]) -> LLMResponse:
         # 将历史、系统提示和工具声明交给模型。
         try:
