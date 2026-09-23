@@ -63,8 +63,9 @@ class OpenAILLM(LLM):
 
     def stream_invoke(self, messages: list, instructions: str,
                tools: list[dict]) -> Iterator[StreamEvent]:
-        """文字到达时立即交给调用方；工具调用在响应完成后统一处理。"""
+        """逐段交出文本；结束时交出完整响应，供 Agent 处理工具调用。"""
         try:
+            # 同一次请求持续返回事件，调用方可以边接收边显示文本。
             events = self.client.responses.create(
                 model=self.model_id,
                 instructions=instructions,
@@ -74,9 +75,12 @@ class OpenAILLM(LLM):
             )
             completed = None
             for event in events:
+                # print(event)
                 if event.type == "response.output_text.delta":
+                    # 文本片段立即交出，不等待完整响应。
                     yield StreamEvent(kind="text", text=event.delta)
                 elif event.type == "response.completed":
+                    # 完成事件携带本轮完整响应，后续从中读取工具调用和用量。
                     completed = event.response
                 elif event.type in ("response.failed", "response.incomplete", "error"):
                     raise RuntimeError(f"模型流式响应失败：{event.type}")
@@ -85,6 +89,7 @@ class OpenAILLM(LLM):
 
         if completed is None or completed.status != "completed":
             raise RuntimeError("模型流式响应未完成。")
+        # 转成与 invoke() 相同的 LLMResponse，减少重复编码。
         yield StreamEvent(kind="completed", response=self._convert(completed))
 
     @staticmethod

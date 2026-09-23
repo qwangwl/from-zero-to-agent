@@ -1,19 +1,8 @@
 import json
-from dataclasses import dataclass
-from typing import Iterator, Literal
 
 from core.llm import LLM
+from core.llm_response import LLMResponse
 from tools import ToolRegistry
-
-
-@dataclass
-class AgentEvent:
-    """Agent 运行过程中的一步，由调用方决定如何展示。"""
-
-    kind: Literal["step", "text", "usage", "tool_call", "tool_result", "final"]
-    text: str = ""
-    step: int | None = None
-    usage: dict[str, int] | None = None
 
 
 class Agent:
@@ -28,57 +17,86 @@ class Agent:
         self.messages = []
 
     def run(self, user_input: str) -> str:
-        """等待运行结束，返回最终文本。"""
-        answer = ""
-        for event in self.run_stream(user_input):
-            if event.kind == "final":
-                answer = event.text
-        return answer
-
-    def run_stream(self, user_input: str) -> Iterator[AgentEvent]:
-        """逐步返回 Agent 事件；迭代结束后，对话历史已更新。"""
+        """非流式运行：等待每轮模型响应完成后再显示。"""
         self.messages.append({"role": "user", "content": user_input})
 
         for step in range(self.max_step):
-            yield AgentEvent(kind="step", step=step + 1)
+            print(f"--- 循环 {step + 1} ---")
+            response = self.llm.invoke(
+                messages=self.messages,
+                instructions=self.system_prompt,
+                tools=self.tool_registry.get_schemas(),
+            )
+            self.messages.extend(response.content)
+
+            if response.text:
+                print("Assistant:", response.text)
+            print("Usage:", response.usage)
+
+            if not response.tool_calls:
+                answer = response.text or "模型未返回文本或工具调用。"
+                if not response.text:
+                    print("Assistant:", answer)
+                return answer
+
+            self._execute_tools(response)
+
+        answer = "已达到模型调用轮次上限，尚未获得最终回答；已执行的文件操作不会自动撤销。"
+        print("Assistant:", answer)
+        return answer
+
+    def run_stream(self, user_input: str) -> str:
+        """流式运行：逐段显示文本，并完成后续工具调用。"""
+        self.messages.append({"role": "user", "content": user_input})
+
+        for step in range(self.max_step):
+            print(f"--- 循环 {step + 1} ---")
             response = None
-            received_text = False
+            printed_text = False
             for event in self.llm.stream_invoke(
                 messages=self.messages,
                 instructions=self.system_prompt,
                 tools=self.tool_registry.get_schemas(),
             ):
-                if event.kind == "text":
-                    received_text = True
-                    yield AgentEvent(kind="text", text=event.text)
+                if event.kind == "text" and event.text:
+                    # 文本片段一到就显示，无需等待这一轮模型响应结束。
+                    if not printed_text:
+                        print("Assistant: ", end="", flush=True)
+                        printed_text = True
+                    print(event.text, end="", flush=True)
                 elif event.kind == "completed":
+                    # 完整响应用于读取工具调用和用量，不重复打印已显示的文本。
                     response = event.response
 
             if response is None:
                 raise RuntimeError("模型未返回完整响应。")
-            if not received_text and response.text:
-                yield AgentEvent(kind="text", text=response.text)
-            yield AgentEvent(kind="usage", usage=response.usage)
+            print()
+            print("Usage:", response.usage)
+            # 保存模型原始输出项，供工具结果返回后的下一轮请求使用。
             self.messages.extend(response.content)
 
             if not response.tool_calls:
                 answer = response.text or "模型未返回文本或工具调用。"
                 if not response.text:
-                    yield AgentEvent(kind="text", text=answer)
-                yield AgentEvent(kind="final", text=answer)
-                return
+                    print("Assistant:", answer)
+                return answer
 
-            for call in response.tool_calls:
-                arguments = json.loads(call.arguments)
-                yield AgentEvent(kind="tool_call", text=f"{call.name}({arguments})")
-                result = self.tool_registry.execute(name=call.name, arguments=arguments)
-                yield AgentEvent(kind="tool_result", text=str(result.error_info))
-                self.messages.append({
-                    "type": "function_call_output",
-                    "call_id": call.id,
-                    "output": result.to_json(),
-                })
+            # 工具调用需要完整参数，因此等本轮流结束后统一执行。
+            self._execute_tools(response)
 
-        message = "已达到模型调用轮次上限，尚未获得最终回答；已执行的文件操作不会自动撤销。"
-        yield AgentEvent(kind="text", text=message)
-        yield AgentEvent(kind="final", text=message)
+        answer = "已达到模型调用轮次上限，尚未获得最终回答；已执行的文件操作不会自动撤销。"
+        print("Assistant:", answer)
+        return answer
+
+    def _execute_tools(self, response: LLMResponse) -> None:
+        """执行本轮所有工具，并将结果加入下一轮模型输入。"""
+        for call in response.tool_calls:
+            arguments = json.loads(call.arguments)
+            print(f"Tool Call: {call.name}({arguments})")
+            result = self.tool_registry.execute(name=call.name, arguments=arguments)
+
+            self.messages.append({
+                "type": "function_call_output",
+                "call_id": call.id,
+                "output": result.to_json(),
+            })
